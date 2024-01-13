@@ -18,6 +18,10 @@ type TestDataSub struct {
 	Sub  TestData `plain:"sub"`
 }
 
+type TestStructSlice struct {
+	Names []string `form:"names"`
+}
+
 func TestUnmarshal(t *testing.T) {
 	// Test case for unmarshaling into struct
 	t.Run("Unmarshal into struct", func(t *testing.T) {
@@ -44,6 +48,20 @@ func TestUnmarshal(t *testing.T) {
 		expected := TestDataSub{"John Doe", 30, TestData{"Jane Doe", 25, true, 123.45}}
 		if !reflect.DeepEqual(result, expected) {
 			t.Errorf("Unmarshal into struct with sub-struct: got %v, want %v", result, expected)
+		}
+	})
+
+	// Test case for unmarshaling into struct with slice
+	t.Run("Unmarshal into struct with slice", func(t *testing.T) {
+		data := []byte("names: [value1, value2]")
+		var result TestStructSlice
+		err := Unmarshal(data, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal into struct with slice: %v", err)
+		}
+		expected := TestStructSlice{[]string{"value1", "value2"}}
+		if !reflect.DeepEqual(result, expected) {
+			t.Errorf("Unmarshal into struct with slice: got %v, want %v", result, expected)
 		}
 	})
 

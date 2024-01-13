@@ -7,84 +7,104 @@ import (
 )
 
 func TestPlain_Marshal(t *testing.T) {
-	// Single
-	type TestSingle struct {
-		Name string `form:"name"`
-	}
+	t.Run("String", func(t *testing.T) {
+		type TestSingle struct {
+			Name string `form:"name"`
+		}
 
-	resp, err := Marshal(TestSingle{Name: "test"})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+		resp, err := Marshal(TestSingle{Name: "test"})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected := "name: test"
-	if string(resp) != expected {
-		t.Fatalf("Single was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test"
+		if string(resp) != expected {
+			t.Fatalf("Single was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 
-	// Multiple
-	type TestMultiple struct {
-		Name string `form:"name"`
-		Age  int    `form:"age"`
-	}
+	t.Run("Int", func(t *testing.T) {
+		type TestMultiple struct {
+			Name string `form:"name"`
+			Age  int    `form:"age"`
+		}
 
-	resp, err = Marshal(TestMultiple{Name: "test", Age: 35})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+		resp, err := Marshal(TestMultiple{Name: "test", Age: 35})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = "name: test\nage: 35"
-	if string(resp) != expected {
-		t.Fatalf("Multiple was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test\nage: 35"
+		if string(resp) != expected {
+			t.Fatalf("Multiple was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 
-	// Empty
-	type TestEmpty struct {
-		Empty string `form:"-"`
-	}
+	t.Run("Float", func(t *testing.T) {
+		type TestEmpty struct {
+			Empty string `form:"-"`
+		}
 
-	resp, err = Marshal(TestEmpty{})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+		resp, err := Marshal(TestEmpty{})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = ""
-	if string(resp) != expected {
-		t.Fatalf("Empty was expecting %s\n got\n %s", expected, string(resp))
-	}
+		expected := ""
+		if string(resp) != expected {
+			t.Fatalf("Empty was expecting %s\n got\n %s", expected, string(resp))
+		}
+	})
 
-	// Slice Single
-	type TestSliceSingle struct {
-		Name string `form:"name"`
-	}
+	t.Run("Bool", func(t *testing.T) {
+		type TestSliceSingle struct {
+			Name string `form:"name"`
+		}
 
-	resp, err = Marshal([]TestSliceSingle{{Name: "test1"}, {Name: "test2"}})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+		resp, err := Marshal([]TestSliceSingle{{Name: "test1"}, {Name: "test2"}})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = "name: test1\n\nname: test2"
-	if string(resp) != expected {
-		t.Fatalf("Slice Single was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test1\n\nname: test2"
+		if string(resp) != expected {
+			t.Fatalf("Slice Single was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 
-	// Slice Multiple
-	type TestSliceMultiple struct {
-		Name string `form:"name"`
-		Age  int    `form:"age"`
-	}
+	t.Run("Struct", func(t *testing.T) {
+		type TestSliceMultiple struct {
+			Name string `form:"name"`
+			Age  int    `form:"age"`
+		}
 
-	resp, err = Marshal([]TestSliceMultiple{{Name: "test1", Age: 35}, {Name: "test2", Age: 36}})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+		resp, err := Marshal([]TestSliceMultiple{{Name: "test1", Age: 35}, {Name: "test2", Age: 36}})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = "name: test1\nage: 35\n\nname: test2\nage: 36"
-	if string(resp) != expected {
-		t.Fatalf("Slice Multiple was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test1\nage: 35\n\nname: test2\nage: 36"
+		if string(resp) != expected {
+			t.Fatalf("Slice Multiple was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 
-	// Sub Struct
+	t.Run("Slice in Struct", func(t *testing.T) {
+		type TestSliceStruct struct {
+			Names []string `form:"names"`
+		}
+
+		resp, err := Marshal(TestSliceStruct{Names: []string{"test1", "test2"}})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "names: [test1, test2]"
+		if string(resp) != expected {
+			t.Fatalf("Slice in Struct was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
 	type TestSubSubStruct struct {
 		Name string `form:"name"`
 		Age  int    `form:"age"`
@@ -96,26 +116,29 @@ func TestPlain_Marshal(t *testing.T) {
 		Sub TestSubSubStruct `form:"sub"`
 	}
 
-	resp, err = Marshal(TestSubStruct{Name: "test", Age: 35, Sub: TestSubSubStruct{Name: "test2", Age: 36}})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+	t.Run("Slice in Struct Slice", func(t *testing.T) {
+		resp, err := Marshal(TestSubStruct{Name: "test", Age: 35, Sub: TestSubSubStruct{Name: "test2", Age: 36}})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = "name: test\nage: 35\nsub.name: test2\nsub.age: 36"
-	if string(resp) != expected {
-		t.Fatalf("Sub Struct was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test\nage: 35\nsub.name: test2\nsub.age: 36"
+		if string(resp) != expected {
+			t.Fatalf("Sub Struct was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 
-	// Sub Struct Slice
-	resp, err = Marshal([]TestSubStruct{{Name: "test", Age: 35, Sub: TestSubSubStruct{Name: "test2", Age: 36}}, {Name: "test3", Age: 37, Sub: TestSubSubStruct{Name: "test4", Age: 38}}})
-	if err != nil {
-		t.Fatalf("Was not expecting an error got %s", err)
-	}
+	t.Run("Slice in Struct Slice", func(t *testing.T) {
+		resp, err := Marshal([]TestSubStruct{{Name: "test", Age: 35, Sub: TestSubSubStruct{Name: "test2", Age: 36}}, {Name: "test3", Age: 37, Sub: TestSubSubStruct{Name: "test4", Age: 38}}})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
 
-	expected = "name: test\nage: 35\nsub.name: test2\nsub.age: 36\n\nname: test3\nage: 37\nsub.name: test4\nsub.age: 38"
-	if string(resp) != expected {
-		t.Fatalf("Sub Struct Slice was expecting %s\n got %s", expected, string(resp))
-	}
+		expected := "name: test\nage: 35\nsub.name: test2\nsub.age: 36\n\nname: test3\nage: 37\nsub.name: test4\nsub.age: 38"
+		if string(resp) != expected {
+			t.Fatalf("Sub Struct Slice was expecting %s\n got %s", expected, string(resp))
+		}
+	})
 }
 
 type TestMarshalerString string

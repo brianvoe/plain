@@ -82,29 +82,53 @@ func unmarshalBasicType(data []byte, v reflect.Value) error {
 func unmarshalSlice(data []byte, v reflect.Value) error {
 	elementType := v.Type().Elem()
 
-	// Split the data into separate elements
+	// Split the data into separate elements by newline
 	elementsData := bytes.Split(data, []byte("\n\n"))
 	for _, elementData := range elementsData {
-		newElement := reflect.New(elementType).Elem()
+		trimmedData := strings.TrimSpace(string(elementData))
 
-		// Check if element is a struct or a basic type
-		if elementType.Kind() == reflect.Struct {
-			err := unmarshalStruct(elementData, newElement)
-			if err != nil {
-				return err
-			}
-		} else if isBasicType(elementType.Kind()) {
-			err := unmarshalBasicType(elementData, newElement)
-			if err != nil {
-				return err
+		// Check if the element is in array format
+		if strings.HasPrefix(trimmedData, "[") && strings.HasSuffix(trimmedData, "]") {
+			// Process as an array formatted string
+			arrayContent := trimmedData[1 : len(trimmedData)-1]
+			arrayElements := strings.Split(arrayContent, ",")
+			for _, arrayElement := range arrayElements {
+				trimmedElement := strings.TrimSpace(arrayElement)
+				if err := processElement(trimmedElement, elementType, v); err != nil {
+					return err
+				}
 			}
 		} else {
-			return errors.New("unsupported slice element type")
+			// Process as a single element
+			if err := processElement(trimmedData, elementType, v); err != nil {
+				return err
+			}
 		}
-
-		v.Set(reflect.Append(v, newElement))
 	}
 
+	return nil
+}
+
+// processElement handles the creation and setting of a new element in the slice.
+func processElement(elementData string, elementType reflect.Type, v reflect.Value) error {
+	newElement := reflect.New(elementType).Elem()
+
+	// Check if element is a struct or a basic type
+	if elementType.Kind() == reflect.Struct {
+		err := unmarshalStruct([]byte(elementData), newElement)
+		if err != nil {
+			return err
+		}
+	} else if isBasicType(elementType.Kind()) {
+		err := unmarshalBasicType([]byte(elementData), newElement)
+		if err != nil {
+			return err
+		}
+	} else {
+		return errors.New("unsupported slice element type")
+	}
+
+	v.Set(reflect.Append(v, newElement))
 	return nil
 }
 
@@ -206,6 +230,8 @@ func setValue(field reflect.Value, value string) error {
 		} else {
 			return err
 		}
+	case reflect.Slice:
+		return unmarshalSlice([]byte(value), field)
 	default:
 		return errors.New("unsupported field type")
 	}

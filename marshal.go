@@ -117,6 +117,12 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 					return err
 				}
 				continue
+			} else if reflect.ValueOf(fieldValue).Kind() == reflect.Slice {
+				err := plainStruct(sb, reflect.ValueOf(fieldValue), fieldName)
+				if err != nil {
+					return err
+				}
+				continue
 			}
 
 			sb.WriteString(rowOutput(fieldName, fieldValue))
@@ -124,22 +130,30 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 
 		return nil
 	case reflect.Slice:
-		// if the value is a slice, loop over its elements
+		var sliceValues []string
 		for i := 0; i < val.Len(); i++ {
 			fieldValue := val.Index(i).Interface()
-			fieldName := parent
-			if parent != "" {
-				fieldName = parent + "." + fmt.Sprintf("%d", i)
-			}
-			if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
-				err := plainStruct(sb, reflect.ValueOf(fieldValue), fieldName)
+
+			// Check if the slice element is a struct or another slice, and process it accordingly
+			if reflect.ValueOf(fieldValue).Kind() == reflect.Struct || reflect.ValueOf(fieldValue).Kind() == reflect.Slice {
+				var nestedSB strings.Builder
+				err := plainStruct(&nestedSB, reflect.ValueOf(fieldValue), "")
 				if err != nil {
 					return err
 				}
+				sliceValues = append(sliceValues, nestedSB.String())
 			} else {
-				sb.WriteString(rowOutput(fieldName, fieldValue))
+				// For simple types, just convert to string and append
+				sliceValues = append(sliceValues, fmt.Sprintf("%v", fieldValue))
 			}
 		}
+
+		// Join all slice values into a single string with the required format
+		sliceStr := fmt.Sprintf("[%s]", strings.Join(sliceValues, ", "))
+		if parent != "" {
+			parent = parent + ": "
+		}
+		sb.WriteString(parent + sliceStr + "\n")
 
 		return nil
 	}
