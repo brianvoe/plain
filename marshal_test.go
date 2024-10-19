@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPlain_Marshal(t *testing.T) {
@@ -41,6 +42,22 @@ func TestPlain_Marshal(t *testing.T) {
 	})
 
 	t.Run("Float", func(t *testing.T) {
+		type TestFloat struct {
+			Age float64 `form:"age"`
+		}
+
+		resp, err := Marshal(TestFloat{Age: 35.5})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "age: 35.5"
+		if string(resp) != expected {
+			t.Fatalf("Float was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Empty", func(t *testing.T) {
 		type TestEmpty struct {
 			Empty string `form:"-"`
 		}
@@ -70,6 +87,27 @@ func TestPlain_Marshal(t *testing.T) {
 		if string(resp) != expected {
 			t.Fatalf("Slice Single was expecting %s\n got %s", expected, string(resp))
 		}
+	})
+
+	t.Run("Time", func(t *testing.T) {
+		type TestTime struct {
+			TimeUTC  time.Time `form:"time_utc"`
+			TimeUnix int64     `form:"time_unix"`
+		}
+
+		resp, err := Marshal(TestTime{
+			TimeUTC:  time.Date(2024, 5, 3, 1, 4, 0, 0, time.UTC),
+			TimeUnix: 1672530248,
+		})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "time_utc: 2024-05-03 01:04:00 +0000 UTC\ntime_unix: 1672530248"
+		if string(resp) != expected {
+			t.Fatalf("Time was expecting %s\n got %s", expected, string(resp))
+		}
+
 	})
 
 	t.Run("Struct", func(t *testing.T) {

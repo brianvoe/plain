@@ -3,6 +3,7 @@ package plain
 import (
 	"reflect"
 	"testing"
+	"time"
 )
 
 type TestData struct {
@@ -164,6 +165,13 @@ func (t *TestUnmarshalerBool) UnmarshalPlain(data []byte) error {
 	return nil
 }
 
+type TestUnmarshalerTime time.Time
+
+func (t *TestUnmarshalerTime) UnmarshalPlain(data []byte) error {
+	*t = TestUnmarshalerTime(time.Time{})
+	return nil
+}
+
 type TestUnmarshalerStruct struct {
 	Name     string `plain:"name"`
 	Age      int    `plain:"age"`
@@ -224,6 +232,18 @@ func TestUnmarshaler(t *testing.T) {
 		}
 		if result != true {
 			t.Errorf("Unmarshal bool: got %v, want true", result)
+		}
+	})
+
+	// Time
+	t.Run("Unmarshaler time", func(t *testing.T) {
+		var result TestUnmarshalerTime
+		err := Unmarshal([]byte(""), &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal time: %v", err)
+		}
+		if !time.Time(result).Equal(time.Time{}) {
+			t.Errorf("Unmarshal time: got %v, want %v", result, time.Time{})
 		}
 	})
 

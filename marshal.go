@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type Marshaler interface {
@@ -110,8 +111,14 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 			}
 			fieldValue := val.Field(i).Interface()
 
-			// If the value is a struct, recurse
+			// If the value is a struct check for time.Time, otherwise recurse
 			if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
+				// Check if the struct is a time.Time
+				if _, ok := fieldValue.(time.Time); ok {
+					sb.WriteString(rowOutput(fieldName, fieldValue))
+					continue
+				}
+
 				err := plainStruct(sb, reflect.ValueOf(fieldValue), fieldName)
 				if err != nil {
 					return err
