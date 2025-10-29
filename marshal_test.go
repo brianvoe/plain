@@ -103,7 +103,7 @@ func TestPlain_Marshal(t *testing.T) {
 			t.Fatalf("Was not expecting an error got %s", err)
 		}
 
-		expected := "time_utc: 2024-05-03 01:04:00 +0000 UTC\ntime_unix: 1672530248"
+		expected := "time_utc: 2024-05-03T01:04:00Z\ntime_unix: 1672530248"
 		if string(resp) != expected {
 			t.Fatalf("Time was expecting %s\n got %s", expected, string(resp))
 		}

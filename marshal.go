@@ -130,8 +130,8 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 			// If the value is a struct check for time.Time, otherwise recurse
 			if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
 				// Check if the struct is a time.Time
-				if _, ok := fieldValue.(time.Time); ok {
-					sb.WriteString(rowOutput(fieldName, fieldValue))
+				if t, ok := fieldValue.(time.Time); ok {
+					sb.WriteString(rowOutput(fieldName, t.Format(time.RFC3339)))
 					continue
 				}
 

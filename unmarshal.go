@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Unmarshaler interface {
@@ -314,6 +315,17 @@ func setValue(field reflect.Value, value string) error {
 		}
 	case reflect.Slice:
 		return unmarshalSlice([]byte(value), field)
+	case reflect.Struct:
+		// Check if it's a time.Time
+		if field.Type() == reflect.TypeOf(time.Time{}) {
+			if t, err := time.Parse(time.RFC3339, value); err == nil {
+				field.Set(reflect.ValueOf(t))
+			} else {
+				return err
+			}
+		} else {
+			return errors.New("unsupported struct type")
+		}
 	default:
 		return errors.New("unsupported field type")
 	}

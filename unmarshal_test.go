@@ -346,3 +346,53 @@ world`)
 		t.Logf("Round-trip result: %+v", result)
 	})
 }
+
+func TestUnmarshal_TimeFormat(t *testing.T) {
+	t.Run("Unmarshal RFC3339 time format", func(t *testing.T) {
+		type TestStruct struct {
+			CreatedAt time.Time `form:"created_at"`
+		}
+
+		data := []byte("created_at: 2024-01-01T00:00:00Z")
+		var result TestStruct
+		err := Unmarshal(data, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal time: %v", err)
+		}
+
+		expected := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		if !result.CreatedAt.Equal(expected) {
+			t.Errorf("Unmarshal time: got %v, want %v", result.CreatedAt, expected)
+		}
+	})
+
+	t.Run("Round-trip time marshaling and unmarshaling", func(t *testing.T) {
+		type TestStruct struct {
+			CreatedAt time.Time `form:"created_at"`
+		}
+
+		original := TestStruct{
+			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		}
+
+		// Marshal
+		marshaled, err := Marshal(original)
+		if err != nil {
+			t.Fatalf("Failed to marshal: %v", err)
+		}
+
+		// Unmarshal back
+		var result TestStruct
+		err = Unmarshal(marshaled, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
+
+		if !result.CreatedAt.Equal(original.CreatedAt) {
+			t.Errorf("Round-trip time: got %v, want %v", result.CreatedAt, original.CreatedAt)
+		}
+
+		t.Logf("Marshaled time: %s", string(marshaled))
+		t.Logf("Unmarshaled time: %v", result.CreatedAt)
+	})
+}
