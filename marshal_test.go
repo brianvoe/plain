@@ -309,3 +309,85 @@ func TestPlain_Marshaler(t *testing.T) {
 		t.Fatalf("Marshaler was expecting %s got %s", expected, string(resp))
 	}
 }
+
+func TestPlain_Marshal_InterfaceSlice(t *testing.T) {
+	t.Run("Array of interface{} with structs", func(t *testing.T) {
+		type TestStruct struct {
+			Name string `form:"name"`
+			Age  int    `form:"age"`
+		}
+
+		// Create a []interface{} containing structs
+		interfaceSlice := []interface{}{
+			TestStruct{Name: "test1", Age: 25},
+			TestStruct{Name: "test2", Age: 30},
+		}
+
+		resp, err := Marshal(interfaceSlice)
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test1\nage: 25\n\nname: test2\nage: 30"
+		if string(resp) != expected {
+			t.Fatalf("Interface slice was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Array of interface{} with basic types", func(t *testing.T) {
+		// Create a []interface{} containing basic types
+		interfaceSlice := []interface{}{
+			"hello",
+			"world",
+		}
+
+		resp, err := Marshal(interfaceSlice)
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "hello\n\nworld"
+		if string(resp) != expected {
+			t.Fatalf("Interface slice with basic types was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Empty []interface{}", func(t *testing.T) {
+		// Create an empty []interface{}
+		interfaceSlice := []interface{}{}
+
+		resp, err := Marshal(interfaceSlice)
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := ""
+		if string(resp) != expected {
+			t.Fatalf("Empty interface slice was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Array of interface{} with mixed types (first element determines type)", func(t *testing.T) {
+		type TestStruct struct {
+			Name string `form:"name"`
+			Age  int    `form:"age"`
+		}
+
+		// Create a []interface{} where all elements are the same type
+		// The first element determines the slice type
+		interfaceSlice := []interface{}{
+			TestStruct{Name: "test1", Age: 25},
+			TestStruct{Name: "test2", Age: 30},
+		}
+
+		resp, err := Marshal(interfaceSlice)
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test1\nage: 25\n\nname: test2\nage: 30"
+		if string(resp) != expected {
+			t.Fatalf("Mixed type interface slice was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+}

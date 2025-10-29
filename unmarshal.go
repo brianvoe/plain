@@ -82,6 +82,11 @@ func unmarshalBasicType(data []byte, v reflect.Value) error {
 func unmarshalSlice(data []byte, v reflect.Value) error {
 	elementType := v.Type().Elem()
 
+	// Handle []interface{} case
+	if elementType.Kind() == reflect.Interface {
+		return unmarshalInterfaceSlice(data, v)
+	}
+
 	// Split the data into separate elements by newline
 	elementsData := bytes.Split(data, []byte("\n\n"))
 	for _, elementData := range elementsData {
@@ -104,6 +109,83 @@ func unmarshalSlice(data []byte, v reflect.Value) error {
 				return err
 			}
 		}
+	}
+
+	return nil
+}
+
+// unmarshalInterfaceSlice handles unmarshaling into []interface{}.
+func unmarshalInterfaceSlice(data []byte, v reflect.Value) error {
+	// Split the data into separate elements by newline
+	elementsData := bytes.Split(data, []byte("\n\n"))
+	for _, elementData := range elementsData {
+		trimmedData := strings.TrimSpace(string(elementData))
+		if trimmedData == "" {
+			continue
+		}
+
+		// Try to determine the type and unmarshal accordingly
+		var element interface{}
+
+		// Check if it looks like a struct (contains colons)
+		if strings.Contains(trimmedData, ":") {
+			// Try to unmarshal as a map[string]interface{}
+			var mapResult map[string]interface{}
+			if err := unmarshalToMap([]byte(trimmedData), &mapResult); err == nil {
+				element = mapResult
+			} else {
+				// If map unmarshaling fails, treat as string
+				element = trimmedData
+			}
+		} else {
+			// Try to determine if it's a basic type
+			if trimmedData == "true" || trimmedData == "false" {
+				// Boolean
+				element = trimmedData == "true"
+			} else if intVal, err := strconv.ParseInt(trimmedData, 10, 64); err == nil {
+				// Integer
+				element = intVal
+			} else if floatVal, err := strconv.ParseFloat(trimmedData, 64); err == nil {
+				// Float
+				element = floatVal
+			} else {
+				// String
+				element = trimmedData
+			}
+		}
+
+		v.Set(reflect.Append(v, reflect.ValueOf(element)))
+	}
+
+	return nil
+}
+
+// unmarshalToMap unmarshals data into a map[string]interface{}.
+func unmarshalToMap(data []byte, result *map[string]interface{}) error {
+	*result = make(map[string]interface{})
+
+	lines := bytes.Split(data, []byte("\n"))
+	for _, line := range lines {
+		pair := bytes.SplitN(line, []byte(":"), 2)
+		if len(pair) != 2 {
+			continue // skip invalid lines
+		}
+
+		key := strings.TrimSpace(string(pair[0]))
+		value := strings.TrimSpace(string(pair[1]))
+
+		// Try to determine the value type
+		var interfaceValue interface{} = value
+
+		if value == "true" || value == "false" {
+			interfaceValue = value == "true"
+		} else if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
+			interfaceValue = intVal
+		} else if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
+			interfaceValue = floatVal
+		}
+
+		(*result)[key] = interfaceValue
 	}
 
 	return nil

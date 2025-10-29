@@ -260,3 +260,89 @@ func TestUnmarshaler(t *testing.T) {
 		}
 	})
 }
+
+func TestUnmarshal_InterfaceSlice(t *testing.T) {
+	t.Run("Unmarshal into []interface{}", func(t *testing.T) {
+		data := []byte(`name: test1
+age: 25
+
+name: test2
+age: 30`)
+
+		var result []interface{}
+		err := Unmarshal(data, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal into []interface{}: %v", err)
+		}
+
+		// The result should be a slice of interface{} containing maps
+		// since we can't determine the exact struct type from the data
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 elements, got %d", len(result))
+		}
+
+		// Check that we got some kind of data structure
+		t.Logf("Result: %+v", result)
+		t.Logf("Result type: %T", result)
+		if len(result) > 0 {
+			t.Logf("First element type: %T", result[0])
+		}
+	})
+
+	t.Run("Unmarshal basic types into []interface{}", func(t *testing.T) {
+		data := []byte(`hello
+
+world`)
+
+		var result []interface{}
+		err := Unmarshal(data, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal basic types into []interface{}: %v", err)
+		}
+
+		expected := []interface{}{"hello", "world"}
+		if !reflect.DeepEqual(result, expected) {
+			t.Errorf("Unmarshal basic types into []interface{}: got %v, want %v", result, expected)
+		}
+	})
+
+	t.Run("Round-trip: marshal then unmarshal []interface{}", func(t *testing.T) {
+		type TestStruct struct {
+			Name string `form:"name"`
+			Age  int    `form:"age"`
+		}
+
+		// Original data
+		original := []interface{}{
+			TestStruct{Name: "test1", Age: 25},
+			TestStruct{Name: "test2", Age: 30},
+		}
+
+		// Marshal
+		marshaled, err := Marshal(original)
+		if err != nil {
+			t.Fatalf("Failed to marshal: %v", err)
+		}
+
+		// Unmarshal back to []interface{}
+		var result []interface{}
+		err = Unmarshal(marshaled, &result)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal: %v", err)
+		}
+
+		// Should get maps back (not the original structs)
+		if len(result) != 2 {
+			t.Fatalf("Expected 2 elements, got %d", len(result))
+		}
+
+		// Check that we got maps
+		for i, elem := range result {
+			if _, ok := elem.(map[string]interface{}); !ok {
+				t.Errorf("Element %d is not a map, got %T", i, elem)
+			}
+		}
+
+		t.Logf("Round-trip result: %+v", result)
+	})
+}

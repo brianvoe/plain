@@ -12,6 +12,22 @@ type Marshaler interface {
 }
 
 func Marshal(data any) ([]byte, error) {
+	// Handle []interface{} case
+	if slice, ok := data.([]interface{}); ok && len(slice) > 0 {
+		// Try to convert to typed slice using reflection
+		// Get the type of the first element
+		firstElem := slice[0]
+		elemType := reflect.TypeOf(firstElem)
+
+		// Create a new slice of the correct type
+		newSlice := reflect.MakeSlice(reflect.SliceOf(elemType), len(slice), len(slice))
+		for i, item := range slice {
+			newSlice.Index(i).Set(reflect.ValueOf(item))
+		}
+
+		return Marshal(newSlice.Interface())
+	}
+
 	var sb strings.Builder
 	val := reflect.ValueOf(data)
 	if val.Kind() == reflect.Ptr {
