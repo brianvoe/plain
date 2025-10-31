@@ -89,22 +89,32 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 		// if the value is a struct, loop over its fields
 		for i := 0; i < val.NumField(); i++ {
 			field := typ.Field(i)
+			fieldVal := val.Field(i)
+
 			tag := field.Tag.Get("plain")
 			if tag == "" {
 				tag = field.Tag.Get("form")
 			}
 
-			if tag == "-" || tag == "" {
+			// Parse the tag to check for omitempty
+			tagName, omitEmpty := parseTag(tag)
+
+			if tagName == "-" || tagName == "" {
 				continue
 			}
 
-			// If no tag, use field name
-			if tag == "" {
-				tag = field.Name
+			// If no tag name, use field name
+			if tagName == "" {
+				tagName = field.Name
 			}
 
 			// Check if the field is exported
-			if !val.Field(i).CanInterface() {
+			if !fieldVal.CanInterface() {
+				continue
+			}
+
+			// Check for omitempty and skip if empty
+			if omitEmpty && isEmpty(fieldVal) {
 				continue
 			}
 
@@ -116,14 +126,14 @@ func plainStruct(sb *strings.Builder, val reflect.Value, parent string) error {
 					return err
 				}
 
-				sb.WriteString(rowOutput(tag, string(marshaled)))
+				sb.WriteString(rowOutput(tagName, string(marshaled)))
 				continue
 			}
 
 			// Get name and value
-			fieldName := tag
+			fieldName := tagName
 			if parent != "" {
-				fieldName = parent + "." + tag
+				fieldName = parent + "." + tagName
 			}
 			fieldValue := val.Field(i).Interface()
 
@@ -193,4 +203,52 @@ func rowOutput(field string, value any) string {
 	}
 
 	return fmt.Sprintf("%s: %v\n", field, value)
+}
+
+// parseTag parses the tag value and returns the name and whether omitempty is set.
+func parseTag(tag string) (string, bool) {
+	if tag == "" {
+		return "", false
+	}
+
+	// Check for omitempty
+	if strings.Contains(tag, ",omitempty") {
+		return strings.TrimSuffix(tag, ",omitempty"), true
+	}
+
+	return tag, false
+}
+
+// isEmpty checks if a value is considered empty (zero value).
+func isEmpty(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return v.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return v.Float() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	case reflect.Interface, reflect.Ptr:
+		return v.IsNil()
+	case reflect.Slice, reflect.Map:
+		return v.Len() == 0
+	case reflect.Struct:
+		// For structs, check if it's time.Time and if it's zero
+		if v.Type() == reflect.TypeOf(time.Time{}) {
+			return v.Interface().(time.Time).IsZero()
+		}
+		// For other structs, check if all fields are zero
+		for i := 0; i < v.NumField(); i++ {
+			if !isEmpty(v.Field(i)) {
+				return false
+			}
+		}
+		return true
+	default:
+		return false
+	}
 }

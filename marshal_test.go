@@ -391,3 +391,104 @@ func TestPlain_Marshal_InterfaceSlice(t *testing.T) {
 		}
 	})
 }
+
+func TestPlain_Marshal_Omitempty(t *testing.T) {
+	t.Run("Omitempty with zero values", func(t *testing.T) {
+		type TestStruct struct {
+			Name    string  `form:"name"`
+			Age     int     `form:"age,omitempty"`
+			Email   string  `form:"email,omitempty"`
+			Balance float64 `form:"balance,omitempty"`
+			Active  bool    `form:"active,omitempty"`
+		}
+
+		// All omitempty fields are zero
+		resp, err := Marshal(TestStruct{Name: "test"})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test"
+		if string(resp) != expected {
+			t.Fatalf("Omitempty was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Omitempty with some non-zero values", func(t *testing.T) {
+		type TestStruct struct {
+			Name    string  `form:"name"`
+			Age     int     `form:"age,omitempty"`
+			Email   string  `form:"email,omitempty"`
+			Balance float64 `form:"balance,omitempty"`
+		}
+
+		resp, err := Marshal(TestStruct{Name: "test", Age: 25, Email: "test@example.com"})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test\nage: 25\nemail: test@example.com"
+		if string(resp) != expected {
+			t.Fatalf("Omitempty with values was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Omitempty with slices and maps", func(t *testing.T) {
+		type TestStruct struct {
+			Name  string                 `form:"name"`
+			Tags  []string               `form:"tags,omitempty"`
+			Data  []int                  `form:"data,omitempty"`
+			Extra map[string]interface{} `form:"extra,omitempty"`
+		}
+
+		// Empty slices and maps should be omitted
+		resp, err := Marshal(TestStruct{Name: "test"})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test"
+		if string(resp) != expected {
+			t.Fatalf("Omitempty slices was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Omitempty with time.Time", func(t *testing.T) {
+		type TestStruct struct {
+			Name      string    `form:"name"`
+			CreatedAt time.Time `form:"created_at,omitempty"`
+			UpdatedAt time.Time `form:"updated_at,omitempty"`
+		}
+
+		// Zero time should be omitted
+		resp, err := Marshal(TestStruct{Name: "test"})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test"
+		if string(resp) != expected {
+			t.Fatalf("Omitempty time was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+
+	t.Run("Omitempty with non-zero time", func(t *testing.T) {
+		type TestStruct struct {
+			Name      string    `form:"name"`
+			CreatedAt time.Time `form:"created_at,omitempty"`
+		}
+
+		resp, err := Marshal(TestStruct{
+			Name:      "test",
+			CreatedAt: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		})
+		if err != nil {
+			t.Fatalf("Was not expecting an error got %s", err)
+		}
+
+		expected := "name: test\ncreated_at: 2024-01-01T00:00:00Z"
+		if string(resp) != expected {
+			t.Fatalf("Omitempty time with value was expecting %s\n got %s", expected, string(resp))
+		}
+	})
+}
